@@ -54,9 +54,18 @@ Bits 10..19 of the same u32 are the array size − 1: 6 on 567 cube maps, 2–64
 arrays, 0 elsewhere. Arrays and cube maps have their own data layouts; see
 [formats/05, Arrays and cube maps](../formats/05-ttpf.md#arrays-and-cube-maps).
 
-Each store's index is keyed by a 64-bit texture hash. Those hashes appear as plain joaat values in
-at least one confirmed case (`hauler` → `0x5A82F9AE`), so the index is name-keyed rather than
-path-keyed.
+Each store's index holds 64-bit texture keys. Read each entry as two
+little-endian u32 words `a` and `b` and assemble `a | (b << 32)`.
+Of 118 keys read from material texture references in two `data.rpf`
+drawables, 107 matched the index in `ttdb_vfx.ttpf`. Reversing the word
+order gave zero matches.
+
+The derivation of the keys remains unknown. A search over 104,005 candidate
+names ran about 24.4 million evaluations against 352,461 index entries
+across 46 stores. Nine 64-bit hash families and 100 two-hash assemblies
+gave zero full-key matches. The search recovered all five planted controls.
+`0x5A82F9AE` is the 32-bit JOAAT of `hauler`. It appeared in neither
+word of any key in those stores.
 
 ## Volumes
 

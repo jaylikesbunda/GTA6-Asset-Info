@@ -189,10 +189,8 @@ worst: its layer normals and its RGB layer-blend mask are often flat.
   has units (256×256 with "3" or "4" mips, 128×128 with "3"); how they are
   stored is unknown.
 - The other descriptor flag bits, the digest tables.
-- The 64-bit texture hash function. [structure/05](../structure/05-ttpf-stores.md)
-  reports one plain joaat case (`hauler` → `0x5A82F9AE`). A check of every
-  index hash in 46 stores found no hash whose low or high 32 bits equal that
-  value, so this is unconfirmed.
+- The 64-bit texture key function. The [key layout and search results](../structure/05-ttpf-stores.md)
+  describe which interpretations were tested.
 
 
 ---

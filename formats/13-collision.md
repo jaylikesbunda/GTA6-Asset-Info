@@ -40,13 +40,16 @@ bytes after it (unknown).
 
 ## 13.2 Surface ids (unresolved)
 
-The id is a 15-bit hash of the material name (`ROAD_TARMAC`,
-`METAL_RAILING` …, from a material XML in `common.rpf`) with an **unknown
-function**. Ruled out: plain index; 15/16-bit folds of joaat, FNV-1/1a
-(32/64), CRC32/CRC32C, CRC-16 variants, Adler-32, Murmur2/3, xxHash32 over
-many name spellings and prefixes; GTA V's packed {material index,
-procedural id}. Part of the material list is also missing (holes in the
-dump). No meta resource holds a material enum.
+The observed surface IDs fit in 15 bits. Their relationship to the material
+names in the partial XML from `common.rpf` remains unknown.
+
+A search over 403 recovered names and 136 distinct IDs from 43,240 collision
+records compared 4,593 candidate mappings. These included plain indices,
+folded hashes, seeds, prefixes and compound names. The best candidate hit
+8 of 136 IDs. The control averaged 1.7 hits with a standard deviation of 1.2.
+Inverting a single seeded JOAAT model across every name/ID pair yielded
+54,808 distinct candidate seeds without a shared seed. These results bound
+the tested mappings and the recovered name list.
 
 ## 13.3 Inferred surface categories
 
