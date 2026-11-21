@@ -63,7 +63,7 @@ solves exactly by re-encoding over every block and escape slot.
 |---|---|---|
 | constant / fixed lanes (`dc`, `dd`, `de`, type `0x10`) | `[mode][n−1][state: 4 bytes big-endian]`, n = 4 + renorm bytes | confirmed |
 | type `0x10` planes | `10 03 40 00 xx 00` on 6-bit planes, `.. 20 00 ..` on 5-bit planes (64 / 32 levels); parameters, not states. Their data is elsewhere in the stream. | inferred |
-| lane 0 and index lanes | `[mode][len lo][len hi][state]`: a 16-bit exact byte length | confirmed (lane 0), inferred (index lanes) |
+| lane 0 and index lanes | candidate seven-byte record `[mode][u16][state: 4 bytes]` | lane 0 record shape observed. The meaning of the middle word and the index-lane layout remain open. |
 | varying plane lanes | `[mode][len lo][len hi]…` fits `3c` lanes, gives impossible lengths for `1c` lanes | unknown |
 | extension lanes | length field not understood | unknown |
 
@@ -101,6 +101,14 @@ length) left. This explains:
   indices; the saving comes from the endpoint planes.
 
 ## 6.2 Ruled out
+
+An independent test applied a literal little-endian byte-budget reading of
+the middle word to the seven-byte lane-0 records. The modeled budget
+disagreed in 2,562 of 2,565 lanes. In a separate 100,020-chunk test of the
+proposed header and index-mode layout, two chunks satisfied the exact
+header-plus-length partition. Both failed the proposed index-mode check.
+The test did not reach a verified symbol decode. The 16-bit field needs a
+separate validation before it can serve as a decoder byte budget.
 
 Static frequency tables in the header; Huffman; byte-aligned planes;
 shift-add and LZMA-style range-coder recurrences; static 4-symbol tables
