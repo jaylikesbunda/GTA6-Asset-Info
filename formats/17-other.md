@@ -54,7 +54,13 @@ the two never coincide.
 | 0x34 | u32 archetype = joaat(lowercase name) | confirmed |
 | 0x38 | u64 id; zero in about half the records | inferred (meaning) |
 
-These are a different family from the map-metadata entities in [§9](09-placements.md).
+The PSIN and [map-metadata](09-placements.md) records partly overlap.
+In a sweep of `levels.rpf`, 953 of the 6,568 distinct PSIN hashes also
+occurred as map archetype names, covering 12,441 PSIN records. The median
+distance to the nearest same-hash map entity was about 518 m, compared with
+1,089 m for a density-matched shuffled control. There were 1,076 matches
+within 10 m, compared with 67 for the control. This supports a shared subset
+of names. The two placement corpora have different coverage.
 
 ## Text (GXT)
 

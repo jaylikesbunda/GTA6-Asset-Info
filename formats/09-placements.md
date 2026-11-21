@@ -92,6 +92,20 @@ Result: **15,412** of 92,925 linked (8,616 by embedded name, 3,645 by name
 order, 2,565 by unique bbox, 586 by bbox plus locality); 25,277 bbox
 matches remain ambiguous.
 
+An independent sweep of `levels.rpf` found 104 direct name-hash links
+against a sample of 393 distinct drawable model hashes. One reproducible
+example is `52ed145f`, the JOAAT of
+`am_e_light_airport_rotatingbcn_01a_lod`. Read archetype `+0x74` from the
+object at decompressed offset `0x60` in the resource at archive offset
+`0x1e206d010`. Drawable model 0 at archive offset `0x1d9d8b010` stores the
+same hash and the literal name. Its bounding-box components differ from
+the archetype by at most 0.000237 m.
+
+In that sample, a bbox-only search at 0.03 m tolerance gave 1,044 unique
+candidates. Across 200 permutations of the drawable hash labels with their
+bbox pool held fixed, 965–978 candidates were unique. Treat unique bounds
+as a heuristic and use name-hash equality where both sides provide it.
+
 `35abc248` (32 B, one per file, 6,304 files) is a named entity group
 (prefab) in group space; no map data places these groups.
 

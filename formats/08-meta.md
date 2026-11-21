@@ -17,7 +17,7 @@ lights, interiors, paths and junctions all use it.
 | 0x30 | ptr → enum table |
 | 0x38 | ptr → instance table, 16 bytes per block |
 | 0x48 | u16 struct count, u16 enum count, u16 instance-block count |
-| 0x4A | u16 enum count; also used as the **root block index** (1-based) |
+| 0x4A | u16 enum count |
 
 ## Tables (confirmed)
 
@@ -28,10 +28,17 @@ lights, interiors, paths and junctions all use it.
 | enum (24 B) | u32 hash, u32 signature, u64 ptr → values, u32 count, u32 0; values 16 B {u64 value, u64 name hash} |
 | instance block (16 B) | u32 struct hash (or a type code, making it a **pool**), u32 byte size, u64 ptr; size / struct size objects follow each other |
 
-**Field and enum names are the case-sensitive joaat** of the original
-names (`Position` = `0c928991`, `Flags` = `4b621302`, `StreetName`,
-`SpeedLimit`, `bIsStop`, `intensity`, `physicsDictionary` …). GTA V field
-names often resolve directly. Struct names do not follow this.
+**Field and enum names can be resolved with JOAAT.** The exact input spelling
+matters. In sampled `ce501483` entity member tables, the stored hash for
+position at `+0x38` is `01166164` (hash of `position`) and the stored hash
+for flags at `+0x48` is `67d26872` (hash of `flags`). The title-case
+spellings `Position` and `Flags` hash to `0c928991` and `4b621302`.
+GTA V field names often resolve directly. Struct names do not follow this rule.
+
+**Map root block.** In the resource at `levels.rpf` offset `0x1e0bed010`,
+both `+0x4A` and `+0x4E` contain 2. The `d3593fa6` map root is block 1
+(1-based). Block 2 is a `0x4f` pool. Identify the root by its struct hash
+when reading resources with this layout.
 
 **Pool reference (confirmed):** u64 with the **1-based block index in bits
 0–12** and the **byte offset in bits 20+**.
