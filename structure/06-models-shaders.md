@@ -41,10 +41,12 @@ geometry for those entries is not in the `PSIN` payload itself.
 
 ## Shader cache
 
-Shaders are **not** DXBC or DXIL. They are native AMD **RDNA2 (GFX10.3)** machine code inside a
-`PS\x00\x09` pipeline-state-object cache.
+The shipped shader programs are native AMD RDNA2 machine code. With wave32
+enabled, the LLVM `gfx1013` target decoded all reachable words in a corpus
+of 2,559 unique shipped compute programs.
 
-Observed cache layout:
+Reported `PS\x00\x09` pipeline-state-object cache layout (independent
+archive location unconfirmed):
 
 | Region | Size |
 |---|---|
@@ -67,8 +69,23 @@ Binding metadata: chunk `0x41` carries user-data root-signature records (`SRV 0x
 `CBV 0x302`, `UAV 0x303`, `Sampler 0x002`), `0x42` register slots, `0x43` 128-bit shader hashes,
 plus `COMPUTE_PGM_RSRC1/2` and the `[numthreads(x,y,z)]` triple.
 
-Two independent counts of the same cache disagree on stage totals, so stage classification depends
-on the classifier used; the instruction stream itself is unaffected.
+An independent scan of `shaders.rpf`, `common.rpf`, `script.rpf`,
+`appdata0.rpf`, `data.rpf` and `packs.rpf` found no structurally valid
+`PS\x00\x09` cache. Two signature hits in `packs.rpf` failed the
+layout and instruction checks. The scan did not cover all of `levels.rpf`
+or `story000.rpf`. The shipped shader records support a separate join
+using XDAT fingerprints (1,259 groups with both VS and PS) and PSV0 binding
+metadata. The shipped root-signature layout remains unresolved.
+
+## Translation checks
+
+Of 2,559 compute programs, 46 translated to HLSL with the strict translator.
+Of those, 27 matched the reference interpreter on an RTX 3060 and 26 also
+matched on WARP. The remaining compute program involves a cross-lane UAV
+read-after-write. A separate `VS_Clear` / `PS_Clear` pair, at
+`0x1b2392` and `0x5176e02` in `shaders.rpf`, matched all 4,096
+reference pixels on both backends. These counts cover the tested programs.
+SDWA operand handling was the first blocker for 1,239 compute programs.
 
 ## Open questions
 

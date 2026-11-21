@@ -105,6 +105,23 @@ next texture.
 Checked per store and format: mip n + 1 equals mip n downsampled (mean
 error 0–4 levels) on BC1, BC3, BC4, BC5 and BC7 in every mode.
 
+An independent 352,461-record census of the 46 base TTDB stores found
+298,354 supported full chains and 9,685 partial chains with a zlib base
+mip. Of the remaining records, 40,105 had an opaque base payload, 2,857
+had an unresolved uncompressed layout, 948 used unsupported codecs in
+that decoder, 374 had unconfirmed layout nibbles, and 138 had no matching
+surface span. These counts describe that decoder's coverage. RGBA8 and
+BGRA8 test images remain provisional where no reference or discriminating
+mip check establishes the layout.
+
+Some 4 KiB RGBA8 entries have the shape of packed colour tables. For
+example, `ttdb_graphics.ttpf` #342 (128 × 128) has 8,333 consecutive
+texels with alpha 239, followed by 8,051 zero-alpha texels after
+`SW_4K_S` decoding. A row-major read scatters that padding. Records
+#339, #341 and #345–347 show the same contiguous alpha pattern with
+different lengths. This supports the tiled ordering on these samples.
+Their use by the game remains unknown.
+
 ## Arrays and cube maps
 
 The array size is d1 bits 10–19 + 1. Arrays and cube maps are stored in two

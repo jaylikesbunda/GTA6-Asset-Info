@@ -47,7 +47,7 @@ differ.
 | Road graph | nodes, links, lanes, speed limits, 34 of 51 node flags, junctions, traffic-light phases | some link flags, street names |
 | Audio | `ADAT` container, chunk tags, Opus framing, codec ids (PCM16, float32 PCM, XMA2, Opus) | a few header fields |
 | PSO data | big-endian section headers, little-endian block table; one serialised object graph (30,683 records) | most type and field hashes |
-| Shaders | shader cache layout | shader names, decoding |
+| Shaders | RDNA2 compute disassembly, XDAT stage grouping, 27 compute and one raster pair verified against a reference interpreter | broader translation, pipeline and root-signature coverage |
 
 ## Biggest open problems
 

@@ -100,6 +100,29 @@ length) left. This explains:
 - BC1 indices cost ~30 bits per block: BCPack saves almost nothing on
   indices; the saving comes from the endpoint planes.
 
+### Constant lane 1 in BC1 and BC4
+
+**Confirmed on the sampled base stores.** Let `N` be the declared chunk
+output size divided by the descriptor's bytes per BC block. In BC1 and
+BC4, the lane-1 constant record has the rANS state and renormalization byte
+count for `S = min(N, 65536)` symbols. This check is independent of how the
+other lanes are interleaved.
+
+| Data | Exact state and byte-budget matches |
+|---|---:|
+| BC1 calibration store (`maps_0_7`) | 2,644 / 2,644 |
+| Held-out BC1 stores | 97,376 / 97,376 |
+| Held-out BC4 stores | 77 / 77 |
+
+The counts support `ceil(N / 65536)` substreams for large chunks. All 918
+multi-substream cases in the sample agree with the lane-1 cap. Of 97,904
+constant states in plane lanes 2–7, 85,810 fit `S`, a tested division of
+`S`, or a per-mip block count. The other 12,094 remain unexplained.
+
+In all 5,748 sampled BC3, BC5, BC6H and BC7 chunks, lane 1 lacked the
+constant record seen in BC1 and BC4. These 16-byte block formats need a
+separate account of lane roles.
+
 ## 6.2 Ruled out
 
 An independent test applied a literal little-endian byte-budget reading of
@@ -126,28 +149,32 @@ an unknown model, so the index lanes cannot be tested alone.
 3. What lane 0 codes.
 4. Exact timing of decode versus read within a round.
 5. Block order (linear or swizzled).
-6. BC4, BC5, BC6H and BC7 streams.
+6. Full decoding of BC1 and BC4, and the lane roles of the 16-byte formats.
 
 ## 6.4 How to resume
 
-Any candidate decoder has a hard check: every lane must consume exactly its
-byte budget and end at x = L, with the symbol count fixed (4N index
-symbols for N blocks). Hits at a free symbol count are chance.
-
-Ways in, best first:
-
-1. **Reference blocks.** Decoded mip-0 BC blocks for a few BCPack textures
-   (needs a reference decoder; none is public). With known symbols, each
-   model and the read schedule can be fitted directly.
-2. **A one-block-difference pair**: two textures that differ in exactly one
-   known block. Few tail-sharing pairs exist (15 groups out of 3,259 BC1
-   textures checked), so this is hard to find.
-3. **Solve the varying-lane record layout first.** Their byte budgets would
-   bound reads per round and make a search tractable.
-4. **Full joint search.** Index models × lane-0 models × varying/extension
-   models × round variants × start-state variants is about 3 × 10^8 full
-   decodes per chunk (~6 × 10^12 symbol steps, roughly two weeks on one
-   desktop), with no early pruning because every round mixes all lanes.
+1. **Start with the 2,566 all-constant chunks.** Zero passed the whole-chunk
+   harness. Its first failure is lane 0's expected symbol count. One
+   1,536-block chunk has a lane-0 state for 257 symbols under the tested
+   constant model. Identify what lane 0 codes and which quantity determines
+   its count. Establish the meaning of the 16-bit fields before using them
+   to schedule reads.
+2. **Resolve the interleaved streams and reconstruct BC blocks.** Pin down
+   the index, varying plane and extension models, their read order and the
+   endpoint/index assembly. Require each stream to consume its own input
+   exactly, reach the expected final state and produce its independently
+   predicted symbol count. Validate the reconstructed BC bytes and block
+   order on held-out chunks, including mip tails and multiple substreams.
+3. **Get exact reference output if available.** Known decompressed BC blocks
+   from authorized reference tooling would make the read order and block
+   assembly directly testable. Re-encoding a visually equivalent image
+   provides weak evidence. A public encoder reproduced about 42% of blocks
+   in one stored BC1 comparison and could not supply exact reference output
+   for the BCPack corpus.
+4. **Extend to 16-byte blocks and texture processing.** Validate each
+   format's lane roles. Once the decoder emits the expected BC bytes, map
+   them to the texture's stored mip, slice and tile order before applying
+   the regular BC texture decoder.
 
 Until then, use the lower-mip recovery ([§5](05-ttpf.md)) and the flat fallbacks.
 

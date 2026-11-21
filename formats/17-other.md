@@ -6,15 +6,36 @@
 |---|---|
 | PSO (`PSIN`; sections LSCH/LENM/LSNS/LGID/LRSC/CHKS) | **mixed endianness** (corrected 2026-11-20): section headers are big-endian, and a section's length includes its 8-byte header ([structure/04](../structure/04-pso-objectgraph.md)); the block table inside is little-endian (u32 hash, u32 length, `0xAA` padding), and so are the 64-bit `(offset << 20) \| block` references; hashed field names (64-bit in the vehicle tables); exported raw |
 | RBF (`RBF0`) | a new variant with u16 indices and inline names; exported raw |
-| `core_bvh4.rpf` | BVH4 collision with packed 24-bit indices; not decoded |
+| `*_bvh4.rpf` | Xbox GPU ray-tracing acceleration structures and mount manifests. See [BVH4 archives](#bvh4-archives). |
 | XML, text | plain; exported as is |
-| shader cache (`shaders.rpf`) | one compiled cache, no names; layout notes in [structure/06](../structure/06-models-shaders.md) |
+| shaders (`shaders.rpf`) | native RDNA2 programs, XDAT stage associations and PSV0 bindings. See [structure/06](../structure/06-models-shaders.md). |
 | audio (AWC/ADAT) | container layout, chunk tags and Opus framing in [structure/03](../structure/03-audio-awc.md); not exported by the tool |
 | animation (`anim.rpf`) | clip dictionaries and cutscene metadata; clip metadata decodes (confirmed); skeleton not in the clip dictionaries. See [Animation](#animation) |
 | music catalogue (`audio:/config/music.dat`) | title, artist and playlist records; title hash solved (confirmed). See [Music catalogue](#music-catalogue) |
 | PSIN scene placements (`story000_script.rpf`) | 97,504 64-byte placement records (confirmed). See [PSIN scene placements](#psin-scene-placements) |
 | movies (`movies.rpf`) | Bink 2: 515 movies, 505 `KB2n` and 10 `KB2j`; header, frame index and Bink Audio tracks parse (confirmed); video needs a Bink 2 decoder |
 | text (GXT) | `0DRP` type `0x7a` key/text resources; 54,118 keys (confirmed). See [Text (GXT)](#text-gxt) |
+
+## BVH4 archives
+
+**Confirmed.** The BVH4 entries are dehydrated Xbox GPU ray-tracing
+acceleration structures. CPU collision uses the separate
+[`phBound` resources](13-collision.md). Each carved BVH4 entry consists of
+adjacent zlib streams for a 208-byte system block and a graphics block.
+The system block stores a 64-bit asset hash at `+0x40` and the graphics
+size at `+0xA0`.
+
+A 64-byte version-6 BVH4 header starts at graphics `+0x100`. The size
+identity `0x140 + totalSizeIn64BNodes * 64` matches the declared graphics
+size on all 1,233 full-carved entries in `shared_minigame000_bvh4.rpf`
+and all 1,412 entries in a held-out `core_bvh4.rpf` sample.
+Hierarchy words include 24-bit values and an 8-bit count. Leaf lists
+contain packed 24-bit indices. Rehydration needs the external geometry
+buffers to reconstruct runtime leaf vertices and bounds. The asset-hash
+join to the source drawable remains open.
+
+`story000_bvh4.rpf` contains four XML streams registering the environment
+and per-tile terrain BVH packs as streamed map content.
 
 ## Animation
 
