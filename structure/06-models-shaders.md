@@ -72,7 +72,10 @@ on the classifier used; the instruction stream itself is unaffected.
 
 ## Open questions
 
-- The hash function for shader and shader-parameter names (values appear as opaque 64-bit hashes).
+- The meaning of the eight-hex suffix on compiled shader wrapper names.
+  A test of 6,896 stems against nine hash families, including JOAAT, produced
+  zero suffix matches. The [32-bit drawable material name fields](../formats/12-materials.md#material-name-hashes)
+  use lowercase JOAAT.
 - Whether meshlet vertex data uses a dictionary encoding (a small shared u16 vocabulary is
   observed across bodies, suggesting one).
 - BCPack decoding for compressed surfaces.

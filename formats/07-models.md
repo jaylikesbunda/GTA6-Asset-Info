@@ -175,7 +175,7 @@ Bone, joint and attach-point names (`suspension_lf`,
 
 | Off | Meaning | Confidence |
 |-----|---------|-----------|
-| 0x00 | u32 shader name hash | confirmed (hash function unknown) |
+| 0x00 | u32 material effect name hash | confirmed ([lowercase JOAAT](12-materials.md#material-name-hashes)) |
 | 0x04 | `"atem"` | confirmed |
 | 0x08 | ptr → constant buffer (~0x160 bytes of floats) | inferred (layout unknown) |
 | 0x10 | ptr → per-parameter slot pointers | confirmed |
@@ -202,7 +202,7 @@ pointer leads to a 32-byte texture reference: ptr, **u64 texture hash**
 - Occluder and water-vegetation LOD buffers (another format).
 - Shader constant-buffer layout (would give cable thickness, paint and
   material constants).
-- Shader, parameter and texture name hash function.
+- The 64-bit texture key function and a complete name table for material effects and parameters.
 - How damage parts are swapped in; wheel size and rim choice; handling.
 
 
