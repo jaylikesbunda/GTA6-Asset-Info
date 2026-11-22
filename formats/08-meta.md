@@ -33,7 +33,54 @@ matters. In sampled `ce501483` entity member tables, the stored hash for
 position at `+0x38` is `01166164` (hash of `position`) and the stored hash
 for flags at `+0x48` is `67d26872` (hash of `flags`). The title-case
 spellings `Position` and `Flags` hash to `0c928991` and `4b621302`.
-GTA V field names often resolve directly. Struct names do not follow this rule.
+GTA V field names often resolve directly.
+
+**Struct names of the map formats resolve too** (2026-11-22): their 32-bit
+struct hashes are the case-sensitive JOAAT of the GTA V type names, with
+`::` written as `__` as in GTA V's meta names.
+
+| Hash | Name | See |
+|---|---|---|
+| `d3593fa6` | `CMapData` | [§9](09-placements.md) |
+| `d98bb561` | `CMapTypes` | [§15](15-lights.md) |
+| `ce501483` | `CEntityDef` | [§9](09-placements.md) |
+| `82d6fc83` | `CBaseArchetypeDef` | [§9](09-placements.md) |
+| `f14a15be` | `rage__fwInstancedMapData` | [§9.3](09-placements.md#93-batches-instanced-grass-and-props-confirmed) |
+| `ba049770` / `ea6b3a96` | `rage__fwPropInstanceListDef` / `rage__fwPropInstanceListDef__InstanceData` | [§9.3](09-placements.md#93-batches-instanced-grass-and-props-confirmed) |
+| `7c475b5d` / `ed86f522` | `rage__fwGrassInstanceListDef` / `rage__fwGrassInstanceListDef__InstanceData` | [§9.3](09-placements.md#93-batches-instanced-grass-and-props-confirmed) |
+| `10506455` | `CMloArchetypeDef` | [§10](10-interiors.md) |
+| `09cc28be` | `CMloInstanceDef` | [§10](10-interiors.md) |
+| `0b1811f1` / `995072ca` / `d6a799f9` | `CMloRoomDef` / `CMloPortalDef` / `CMloEntitySet` | [§10](10-interiors.md) |
+| `f54b227b` | `CLightAttrDef` | [§15](15-lights.md) |
+| `27922c43` | `CExtensionDefLightEffect` | [§15](15-lights.md) |
+
+The vehicle and material structs (`e59aa857`, `51019114`, `fc1c7000`,
+`f795e8ba`, `37e52277`, `a9d57751`) do not resolve against GTA V names and
+may be new or renamed types. PSO struct names are a separate, 64-bit scheme
+([§17](17-other.md#pso)).
+
+**Method.** Every identifier in CodeWalker's GTA V sources (63,839 tokens)
+was hashed as written and in lower case, and compared with the 189 hashes
+quoted in these notes. 66 match. The expected number of chance matches is
+about 0.006 (63,839 × 2 × 189 / 2³²), so a match is a name, not a
+coincidence. Adding public RDR2 lists (native and enum databases,
+`rdr3_discoveries`) resolved nothing further. The names above are confirmed
+by hash; what a field means is still inferred from its use.
+
+```python
+def joaat(s):
+    h = 0
+    for c in s.encode():
+        h = (h + c) & 0xffffffff
+        h = (h + (h << 10)) & 0xffffffff
+        h ^= h >> 6
+    h = (h + (h << 3)) & 0xffffffff
+    h ^= h >> 11
+    return (h + (h << 15)) & 0xffffffff
+
+assert joaat("CMloRoomDef") == 0x0b1811f1
+assert joaat("rage__fwInstancedMapData") == 0xf14a15be
+```
 
 **Map root block.** In the resource at `levels.rpf` offset `0x1e0bed010`,
 both `+0x4A` and `+0x4E` contain 2. The `d3593fa6` map root is block 1
@@ -61,7 +108,7 @@ when reading resources with this layout.
 | 0x44 | string: inline chars or u64 ref into a char pool | confirmed |
 | 0x07 | pointer (polymorphic when extra = 0: takes the struct of the block it points into) | confirmed |
 | 0x05 | embedded struct | confirmed |
-| 0x71 | map (24 B): u64 1, u64 pool reference, u16 count, u16 capacity. The reference points at `count` consecutive entry structs (`00000100`–`00000106`), each {`6098a50e` key, `063fa3f2` value}; the entry struct sets the value type (`00000101` = u32 key → u32 array). Empty maps point at block 0. PSO uses code 0x75 instead ([§17](17-other.md#pso)) | confirmed |
+| 0x71 | map (24 B): u64 1, u64 pool reference, u16 count, u16 capacity. The reference points at `count` consecutive entry structs (`00000100`–`00000106`), each {`6098a50e` key (`Key`), `063fa3f2` value (`Item`)}; the entry struct sets the value type (`00000101` = u32 key → u32 array). Empty maps point at block 0. PSO uses code 0x75 instead ([§17](17-other.md#pso)) | confirmed |
 
 ## Open questions
 

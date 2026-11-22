@@ -6,7 +6,8 @@ Lights hang off **archetypes** (`82d6fc83` +0x90 extension array) and some
 **entities** (`ce501483` +0x28) as **light extensions** `27922c43` (80 B,
 GTA V `CExtensionDefLightEffect`): +0x08 u32 name, +0x10 vec3 offset
 (always 0 here), +0x20 and +0x30 arrays of **lights** `f54b227b` (672 B,
-GTA V `CLightAttrDef`). Archetype files have root `d98bb561`.
+GTA V `CLightAttrDef`). Archetype files have root `d98bb561` (`CMapTypes`).
+All three struct hashes are the JOAAT of these GTA V names ([§8](08-meta.md)).
 
 Field names are the case-sensitive joaat of GTA V's `CLightAttr` member
 names, matched against the struct's own member hashes (confirmed unless
@@ -18,8 +19,8 @@ noted).
 | +0x1A0 / +0x1AC | direction / tangent (unit vectors) |
 | +0x288 | `colour` u8[3] RGB |
 | +0x282 | `volOuterColour` u8[3] |
-| +0x144 (`8609d52c`) | **time flags**: 24-bit hour mask, bit h = on at hour h (`ffffff` always; `e0007f` = night only) |
-| `1cbbbe30` | light type: 1 point, 2 spot, 4 capsule, 32 rare |
+| +0x144 (`8609d52c`) | `timeFlags`: 24-bit hour mask, bit h = on at hour h (`ffffff` always; `e0007f` = night only) |
+| `1cbbbe30` | `lightType`: 1 point, 2 spot, 4 capsule, 32 rare |
 | +0x138 (`efcd993d`) | `intensity` |
 | +0x148 (`cc6806e8`) | `falloff` = range in metres |
 | +0x14C (`2bb342ba`) | `falloffExponent` |

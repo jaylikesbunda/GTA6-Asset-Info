@@ -127,7 +127,7 @@ presets and sets (confirmed layout; field names are hashes):
 | Struct | Fields |
 |---|---|
 | `f795e8ba` preset | name, parent, Category, a list of `37e52277` parameters, and two maps ([§8](08-meta.md), type 0x71): `12f85293` tags (key → u32 list) and `9a289423` |
-| `37e52277` parameter | `3eaddcd7` parameter hash (`44e21c90` = joaat("base")), a colour, `147fdab5` = four u64 texture hashes (`ttpf` keys, [§5](05-ttpf.md)) |
+| `37e52277` parameter | `3eaddcd7` (`StateName`) parameter hash (`44e21c90` = joaat("base")), a colour, `147fdab5` = four u64 texture hashes (`ttpf` keys, [§5](05-ttpf.md)) |
 | `a9d57751` material set | name, a list of (slot, preset) pairs; face sets hold four skin variants in the "base" slot |
 
 Tags in `12f85293` are joaat of the lower-case tag name: `002f77d9` =

@@ -2,6 +2,9 @@
 
 *Part of the [SixNG format specification](README.md). Numbers as of 2026-11-21; confidence: confirmed / inferred / unknown.*
 
+The struct hashes in this section are the JOAAT of the GTA V names given
+([§8](08-meta.md)).
+
 | Struct | GTA V equivalent | Fields | Confidence |
 |---|---|---|---|
 | `09cc28be` (592 B, 2,590 instances) | `CMloInstanceDef` | entity prefix; archetype at +0x44. **Rotation stored as is, not inverted** (unlike entities) | confirmed |
@@ -21,9 +24,9 @@ entities show up as unparented HD entities near (0, 0, 0).
 
 | Struct | Fields (GTA V names) |
 |---|---|
-| room `0b1811f1` | name (+0), bbMin / bbMax, blend, timecycleName, flags, portalCount, floorId, exteriorVisibiltyDepth, **attachedObjects** (u32 indices into the interior's entity list), reflectionProbes |
-| entity set `d6a799f9` | name (+0), locations (room indices), entities (+0x18) |
-| portal `995072ca` | roomFrom, roomTo, flags, mirrorPriority, opacity, audioOcclusion, corners, attachedObjects |
+| room `0b1811f1` (`CMloRoomDef`) | name (+0), bbMin / bbMax, blend, timecycleName, flags, portalCount, floorId, exteriorVisibiltyDepth, **attachedObjects** (u32 indices into the interior's entity list), reflectionProbes |
+| entity set `d6a799f9` (`CMloEntitySet`) | name (+0), locations (room indices), entities (+0x18) |
+| portal `995072ca` (`CMloPortalDef`) | roomFrom, roomTo, flags, mirrorPriority, opacity, audioOcclusion, corners, attachedObjects |
 
 Room `e69e4c84` is `limbo` (room 0, outside), as in GTA V.
 

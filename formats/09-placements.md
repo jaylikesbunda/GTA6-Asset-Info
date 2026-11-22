@@ -92,13 +92,13 @@ low confidence).
 ## 9.3 Batches (instanced grass and props, confirmed)
 
 Subclasses of the entity struct, listed in the map data's `f14a15be`
-(+0x140: arrays at +0x08 / +0x18). The entity prefix gives the archetype
+(`rage__fwInstancedMapData`; +0x140: arrays at +0x08 / +0x18). The entity prefix gives the archetype
 and a batch centre; instance arrays sit in the graphics page.
 
 | Struct | GTA V equivalent | Fields |
 |---|---|---|
-| `ba049770` prop batch (368 B) | `PropInstanceList` | +0x60 LOD distance, +0x80 u16 array, **+0x90 instances `ea6b3a96` (64 B)**: 3 × vec4 rows of a 3×4 matrix (rotation × scale in xyz, world translation in w), +0x30 f32, **+0x34 tint RGBA**, +0x38 f32, +0x3C u16, +0x3E u8 × 2; +0xA0 bbox |
-| `7c475b5d` grass batch (416 B) | `GrassInstanceList` | +0x80 bbox, +0xA0 vec3 scale range, +0xB8 LOD distance, **+0x178 instances `ed86f522` (16 B)**: u16 × 3 position quantised in the bbox, u8 normal x / y, u8 × 3 colour, u8 scale, u8 AO, u8, u16 |
+| `ba049770` prop batch (368 B) | `PropInstanceList` (hash = `rage__fwPropInstanceListDef`; instances `rage__fwPropInstanceListDef__InstanceData`) | +0x60 LOD distance, +0x80 u16 array, **+0x90 instances `ea6b3a96` (64 B)**: 3 × vec4 rows of a 3×4 matrix (rotation × scale in xyz, world translation in w), +0x30 f32, **+0x34 tint RGBA**, +0x38 f32, +0x3C u16, +0x3E u8 × 2; +0xA0 bbox |
+| `7c475b5d` grass batch (416 B) | `GrassInstanceList` (hash = `rage__fwGrassInstanceListDef`; instances `rage__fwGrassInstanceListDef__InstanceData`) | +0x80 bbox, +0xA0 vec3 scale range, +0xB8 LOD distance, **+0x178 instances `ed86f522` (16 B)**: u16 × 3 position quantised in the bbox, u8 normal x / y, u8 × 3 colour, u8 scale, u8 AO, u8, u16 |
 
 906,922 batches: 24,880,278 prop and 219,484,128 grass instances; 99.76 %
 of batches have a model name.

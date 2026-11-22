@@ -90,8 +90,8 @@ One PSO in `data.rpf` holds the handling data: 1,097 records of struct
 | Field | Meaning |
 |---|---|
 | `93db5464` | joaat of the lower-case handling name (`phoenix`); 301 match model names |
-| `49a01a86` | a second name hash, often 0 |
-| `41c8dec7` | array of polymorphic components, one struct type per component |
+| `49a01a86` | `ParentName`: a second name hash, often 0; by its name, the handling record it inherits from (inferred) |
+| `41c8dec7` | `HandlingData`: array of polymorphic components, one struct type per component |
 
 | Component | Contents (inferred from the field names) |
 |---|---|

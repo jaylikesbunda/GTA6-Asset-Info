@@ -24,8 +24,8 @@ vehicle tables. Field names are case-sensitive joaat and match GTA V's
 | Struct | Count (game-data resource) | Fields |
 |---|---|---|
 | `e59aa857` model info | 327 | `gameName` (`120e5836`, joaat of the model name), `handlingId` (`ec41bd9c`), `txdName`, `wheelScale` (`933301be`), `wheelScaleRear` (`76706238`), `wheelType` (`a2e90c68`), `layout`, `HDTextureDist`, `lodDistances`, `vehicleClass`, `swankness`, `plateType`, `defaultBodyHealth` … (52 names resolve) |
-| `51019114` configuration | 3,879 | `fb1f80ff` model, **`5bdc13e3` body colour** (ARGB u32), `e89b8540` part models (joaat names, about 150: frame, bumpers, exhaust, `brakedisc_*`, `caliper_*`, and one `rim_*` and one `tyre_*` in 82 %) |
-| `fc1c7000` variation set | 4,772 | `fb1f80ff` model, **`8c866829` weighted paint-colour list**: 1 to 400 ARGB colours with repeats (2,246 sets; this is the pool of 17,632 colours), `59a59c3e` weighted part groups: `37a6f9ef` slot, `a12ff3a2` list of {`8e6612bf` part, `dc732774` weight %} |
+| `51019114` configuration | 3,879 | `fb1f80ff` model (field name `handling`), **`5bdc13e3` body colour** (ARGB u32), `e89b8540` part models (joaat names, about 150: frame, bumpers, exhaust, `brakedisc_*`, `caliper_*`, and one `rim_*` and one `tyre_*` in 82 %) |
+| `fc1c7000` variation set | 4,772 | `fb1f80ff` model (`handling`), **`8c866829` weighted paint-colour list**: 1 to 400 ARGB colours with repeats (2,246 sets; this is the pool of 17,632 colours), `59a59c3e` (`slots`) weighted part groups: `37a6f9ef` slot, `a12ff3a2` (`options`) list of {`8e6612bf` part, `dc732774` (`probability`) weight %} |
 
 With the per-vehicle packs this covers 373 models (305 named), 4,063
 configurations (3,339 with a rim and a tyre) and 2,377 colour lists. Handling is

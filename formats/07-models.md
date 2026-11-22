@@ -208,7 +208,7 @@ shares one UV layout: the face in the middle, the ears at the sides and a
 teeth and gums strip along the bottom. The face comes from a material
 preset ([§12](12-materials.md#material-presets-peds)):
 
-- a face preset (Category `378ad10c`) whose tag map lists the head
+- a face preset (Category `378ad10c` = joaat("heads")) whose tag map lists the head
   (key `4bfd27dd`, joaat of the full head drawable name) is that head's
   face;
 - its "base" parameter holds the **albedo in slot `ead733fc`** (1024² BC1
