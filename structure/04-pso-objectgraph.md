@@ -2,7 +2,9 @@
 
 ## `PSIN` container
 
-Big-endian. Sections are walked by a u32 length that **includes its own 8-byte header**.
+Section headers are big-endian. Sections are walked by a u32 length that **includes its own 8-byte
+header**. Inside the sections (the `PSIN` block table, the references and the `LSCH` schema) the data
+is little-endian; the full layout is in [formats §17](../formats/17-other.md#pso).
 
 Evidence sample (99,744-byte `PSIN` payload) — first 32 bytes:
 
@@ -19,11 +21,11 @@ and which does not close — recorded as an open case rather than assumed.
 
 | Tag | Meaning |
 |---|---|
-| `LSCH` | schema/header section |
+| `LSCH` | schema: struct table and member records |
 | `LENM` | enumeration table |
 | `LSNS` | data section (see framing below) |
 | `LGID` | global id section |
-| `LRSC` | resource reference |
+| `LRSC` | a copy of the meta resource header (`0DRP`) |
 | `CHKS` | footer / checksum marker |
 
 A second section family exists: `PMAP`, `PSCH`, `PSIG`, optional `STFN`/`STDN`, `STNS`, `CHKS`.

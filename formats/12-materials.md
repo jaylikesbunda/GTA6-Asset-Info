@@ -1,6 +1,6 @@
 # 12. Material classes and texture slots
 
-*Part of the [SixNG format specification](README.md). Numbers as of 2026-11-20; confidence: confirmed / inferred / unknown.*
+*Part of the [SixNG format specification](README.md). Numbers as of 2026-11-21; confidence: confirmed / inferred / unknown.*
 
 The drawable census found 344 shaders over 254 K drawables (1.83 M shader
 instances) in `levels.rpf` and `packs.rpf`.
@@ -9,7 +9,7 @@ instances) in `levels.rpf` and `packs.rpf`.
 
 **Confirmed.** The 32-bit material effect and parameter name fields use
 unseeded Jenkins one-at-a-time (JOAAT) over ASCII-lowercased names, with
-32-bit unsigned arithmetic. Examples are `diffusetex` → `c8e8c282`,
+32-bit unsigned arithmetic. Examples are `standard` → `bcf03fc1`, `diffusetex` → `c8e8c282`,
 `bumptex` → `1e77bf4c`, and `speculartex` → `c6f46e79`.
 
 The rule matches all 1,688 literal name/hash pairs in
@@ -23,6 +23,27 @@ In an independent game-data sample, 1,062 material effect records joined to
 19 distinct literal names in `shaders.rpf`. The CodeWalker list resolved
 8 of 63 distinct game parameter-map field hashes. The remaining 55 hashes
 are unresolved against that list.
+
+The larger upstream drawable survey used these name sources:
+
+- a shader preset list in `common.rpf` names all 344 shaders;
+- uncompressed blocks in `shaders.rpf`, before the compressed cache, hold
+  NUL-terminated technique, sampler and texture names and 24-byte binding
+  records. Texture bindings are `{texture hash, parameter hash, 02 01 xx xx,
+  00 80 00 00}`, e.g. (`diffusetexture`, `diffusetex`);
+- a word search over likely parts. Per-layer sets (`lyr0…`, `lyr1…`) check
+  themselves; names that differ only in a final digit do not, because joaat
+  states collide before the last character.
+
+With those sources, 77 of 229 distinct parameters resolve, accounting for
+about 75 % of uses.
+
+Shader names give the families directly: emissive (`standard_emissive*`,
+`signs_emissive`, `*_emissive_layer*`, with an `emissivetex` slot), glass
+(`standard_vehicle_glass`, `standard_glass_breakable*`), water
+(`standard_alpha_water`, `water_micro_geom`, `standard_alpha_waterfall`),
+decals (`standard_decal_hbb`), peds (`ped_standard_skin`) and vehicles
+(`standard_vehicle_2lyr`).
 
 ## Shader record bytes +0x38..+0x3F
 
@@ -42,24 +63,24 @@ are unresolved against that list.
 | 0x40 | water | 14.6 K | 2 |
 | 0x10, 0x20 | one vehicle shader | — | 1 |
 
-**Emissive has no bucket bit**; only known shader families mark it. A
-table of known families adds car_paint, window, glass, emissive, water,
-terrain_multilayer.
+**Emissive has no bucket bit**; only the shader family marks it (names
+above). A table of known families adds car_paint, window, glass, emissive,
+water, terrain_multilayer.
 
 ## Texture slots
 
-| Parameter | Holds | Confidence |
-|---|---|---|
-| `c8e8c282` | base colour, sRGB | confirmed |
-| `1e77bf4c` | normal, BC1 (B = 255) | confirmed |
-| `84c69350`, `58b6e707` | normal, BC5 | confirmed |
-| `de84c011`, `4c759bf1`, `27dbd2be`, `7e1f7f44`, `1a016c7e` | terrain layer / detail normals | inferred |
-| `c075f9b6` | terrain RGB layer-blend mask | inferred |
-| `346394ea`, `7d4f12e2`, `7485dafb` | colour layers of the map blend shaders; `7485dafb` has opacity in alpha | inferred |
-| `0df47048` | secondary / detail colour, sRGB | inferred |
-| `c6f46e79` | packed: **R** binary mask (metalness?), **G** roughness or gloss, **B** AO / cavity, A unused | inferred |
-| `739e3d0d` | packed data. On wet-capable surfaces: R region mask, G nearly flat (puddle blobs), B detailed, A AO-like. **Most maps are R = G = 0, B ≈ 0.5**, so B is not roughness: read that way, surfaces turn mirror-like. Treat the channel meaning as unknown | inferred |
-| `19df25d7` | format 157 (unknown), vehicle shader | unknown |
+| Parameter | Name | Holds | Confidence |
+|---|---|---|---|
+| `c8e8c282` | `diffusetex` | base colour, sRGB | confirmed |
+| `1e77bf4c` | `bumptex` | normal, BC1 (B = 255) | confirmed |
+| `84c69350`, `58b6e707` | `lyr0normaltex`, `lyr1normaltex` | normal, BC5 | confirmed |
+| `27dbd2be`, `7e1f7f44`, `4c759bf1`, `de84c011`, `1a016c7e` | `bumptexture_layer0`–`3`, `tintbumptexture` | terrain layer / detail normals | inferred |
+| `c075f9b6` | `lookuptexture` | terrain RGB layer-blend mask | inferred |
+| `346394ea`, `7d4f12e2`, `7485dafb` | `lyr0diffusetex`, `lyr1diffusetex`, `dirtdiffusetex` | colour layers of the map blend shaders; `7485dafb` has opacity in alpha | inferred |
+| `0df47048` | `diffusetex2` | secondary / detail colour, sRGB | inferred |
+| `c6f46e79` | `speculartex` | packed: **R** binary mask (metalness?), **G** roughness or gloss, **B** AO / cavity, A unused | inferred |
+| `739e3d0d` | `speculartex2` | packed data. On wet-capable surfaces: R region mask, G nearly flat (puddle blobs), B detailed, A AO-like. **Most maps are R = G = 0, B ≈ 0.5**, so B is not roughness: read that way, surfaces turn mirror-like. Treat the channel meaning as unknown | inferred |
+| `19df25d7` | ? | format 157 (unknown), vehicle shader | unknown |
 
 **Placeholder textures** (confirmed). Many building materials point their
 packed-data slot (`739e3d0d`) at a 4 × 4 all-zero texture, and some point
@@ -72,8 +93,10 @@ non-visual proxies (inferred).
 
 ## Two-layer multilayer shaders (walls, ground pieces, blend decal)
 
-Shaders `b217b263`, `1251cae5`, `cd8ceb5e`, `77d8ab27` (12 parameters) and
-`4f0b809b` (terrain blend decal) blend two full texture sets by vertex
+Shaders `standard_2lyr_pxm` (`b217b263`), `standard_2lyr_pxm_ground`
+(`1251cae5`), `standard_2lyr_ground` (`cd8ceb5e`), `standard_2lyr`
+(`77d8ab27`) (12 parameters) and `standard_2lyr_pxm_decal_ground`
+(`4f0b809b`, terrain blend decal) blend two full texture sets by vertex
 colour. Derived from texture sizes and vertex/UV statistics over 4.7 K
 materials, not from shader code (as of 2026-11-20).
 
@@ -89,19 +112,38 @@ materials, not from shader code (as of 2026-11-20).
 | data maps (BC7) | R varies, G about constant per texture, B and A vary | — | unknown meaning |
 | two-channel maps (BC1) | R = 0, G and B anti-correlated | — | unknown meaning |
 
-The 17-parameter ground shaders (`360e396b`, `b21f1ba5`, `61e09df7`) are a
-different, many-layer family and are not mapped yet.
+The 17-parameter ground shaders are a different family, four layers by
+their names (`standard_uber_4lyr_spx_dm_hbb`, `standard_uber_4lyr_pxm_hbb_fixuv1`,
+`standard_uber_4lyr_dpm_dm_hbb`), and are not mapped yet.
 
 **Normal maps are DirectX convention (green = +Y down)** (confirmed by an
 integrability test on 270 of 300 maps). Invert G for glTF/OpenGL.
 
+## Material presets (peds)
+
+About 1,500 of the 4,678 meta resources in `packs.rpf` hold material
+presets and sets (confirmed layout; field names are hashes):
+
+| Struct | Fields |
+|---|---|
+| `f795e8ba` preset | name, parent, Category, a list of `37e52277` parameters, and two maps ([§8](08-meta.md), type 0x71): `12f85293` tags (key → u32 list) and `9a289423` |
+| `37e52277` parameter | `3eaddcd7` parameter hash (`44e21c90` = joaat("base")), a colour, `147fdab5` = four u64 texture hashes (`ttpf` keys, [§5](05-ttpf.md)) |
+| `a9d57751` material set | name, a list of (slot, preset) pairs; face sets hold four skin variants in the "base" slot |
+
+Tags in `12f85293` are joaat of the lower-case tag name: `002f77d9` =
+"pedappearance", `a9473ab4` = "style". Key **`4bfd27dd` lists the drawables
+the preset applies to** (joaat of the full drawable name); this is how a
+head gets its face ([§7.5](07-models.md#ped-heads-face-textures-confirmed)).
+Set and preset names do not resolve.
+
 ## Open questions
 
-- Names for the remaining material effect and parameter hashes.
+- 152 of 229 parameter names; the collision surface hash
+  ([§13](13-collision.md)) is a different, unsolved one.
 - Whether `c6f46e79` G is roughness or gloss; emissive and glass flags for
   unknown shader families.
 
 
 ---
 
-← [11. Vehicle paint](11-vehicle-paint.md) · [Index](README.md) · [13. Collision and surface categories](13-collision.md) →
+← [11. Vehicle paint and vehicle tables](11-vehicle-paint.md) · [Index](README.md) · [13. Collision and surface categories](13-collision.md) →

@@ -61,10 +61,11 @@ when reading resources with this layout.
 | 0x44 | string: inline chars or u64 ref into a char pool | confirmed |
 | 0x07 | pointer (polymorphic when extra = 0: takes the struct of the block it points into) | confirmed |
 | 0x05 | embedded struct | confirmed |
+| 0x71 | map (24 B): u64 1, u64 pool reference, u16 count, u16 capacity. The reference points at `count` consecutive entry structs (`00000100`–`00000106`), each {`6098a50e` key, `063fa3f2` value}; the entry struct sets the value type (`00000101` = u32 key → u32 array). Empty maps point at block 0. PSO uses code 0x75 instead ([§17](17-other.md#pso)) | confirmed |
 
 ## Open questions
 
-- Struct name hashes; header field 0x4E.
+- Struct name hashes (in PSO they are 64-bit, [§17](17-other.md#pso)); header field 0x4E.
 - Many fields are still known only by hash; they are exported by hash.
 
 

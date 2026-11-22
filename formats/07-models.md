@@ -1,6 +1,6 @@
 # 7. Drawables, fragments and vehicles
 
-*Part of the [SixNG format specification](README.md). Numbers as of 2026-11-20; confidence: confirmed / inferred / unknown.*
+*Part of the [SixNG format specification](README.md). Numbers as of 2026-11-21; confidence: confirmed / inferred / unknown.*
 
 Checked on a vehicle body and on several map buildings and road pieces:
 exported GLBs opened in a glTF viewer (shaded, normals, UV checker,
@@ -39,7 +39,9 @@ u32 magic `0x4042` at 0.
 | 4 | 0x28 | 4 | UV1 | confirmed |
 | 6 | 0x26 | 4 | skin weights, 4 × u8 (sum 255), with slot 8 format 0x25 | confirmed |
 | 8 | 0x00 | **1 or 2** | skin joint: one bone index, weight 1. Width = section size / V (next section offset − this offset). 1 = u8, **2 = u16 LE** | confirmed |
-| 8 | 0x25 | 4 | skin joints, 4 × u8 (wheels, tyres) | confirmed |
+| 8 | 0x25 | 4 | skin joints, 4 × u8 (wheels, tyres, ped clothing) | confirmed |
+| 7 | 0x26 | 4 | ped meshes: a second set of 4 skin weights (the 8 weights sum to 255) | confirmed |
+| 9 | 0x25 | 4 | ped meshes: a second set of 4 skin joints, with slot 7 | confirmed |
 | 11 | 0x27 | 4 | tangent R10G10B10A2: xyz = v / 1023 × 2 − 1 (model space); A2 = 3 → bitangent sign w = −1 | confirmed |
 | 12, 13 | 0x26 | 4 | RGBA8 | unknown |
 | 14, 15 | 0x28 | 4 | UV2, UV3 | confirmed |
@@ -109,7 +111,7 @@ agree with the stored normals; flip the rest.
 | Structure | Field | Confidence |
 |---|---|---|
 | geometry record (0xA0) | +0x08 ptr → mesh-blob descriptor; +0x40 ptr → holder whose first u64 points to the index-buffer descriptor | confirmed |
-| model (stride 0x40) | +0x00 ptr → geometry-record ptrs; +0x08 u16 count, u16 capacity; +0x0C u32; +0x10 ptr (bounds?); **+0x18 ptr → u16 shader index per geometry**; +0x28 u32, u8 0xFF, u8, u16 count | confirmed (0x00, 0x08, 0x18) |
+| model (stride 0x40) | +0x00 ptr → geometry-record ptrs; +0x08 u16 count, u16 capacity; +0x0C u16 (peds: bone-palette count); +0x10 ptr (bounds?); **+0x18 ptr → u16 shader index per geometry**; +0x20 ptr (peds: **bone palette**, [§7.5](#ped-skinning-bone-palette-confirmed)); on vehicles +0x0C / +0x20 hold something else (+0x0C = 295 on a car body, entries not sorted); +0x28 u32, u8 0xFF, u8, u16 count | confirmed (0x00, 0x08, 0x0C, 0x18, 0x20) |
 | model-array header | 16 bytes {ptr → model-pointer array, u16 count, u16 capacity} | confirmed |
 | LOD group | pointers to model-array headers at **+0x50, +0x58, +0x60, +0x68** of the main drawable (high, med, low, vlow; empty = 0). Main drawable = the root of a `.#dr`, the struct at root+0x18 of a `.#ft` | confirmed (2026-11-20) |
 | embedded drawables | other model arrays belong to embedded drawables: fragment children (root+0x10, records 0xC0 apart, each with its own +0x50 list) and nested sub-drawables in buildings. They are parts, not LODs | confirmed layout; placement of fragment-child parts inferred |
@@ -171,15 +173,79 @@ should be re-exported.**
 Bone, joint and attach-point names (`suspension_lf`,
 `bonnet_catch_l_pos1_attach` …) are plain strings in the system page.
 
+### Ped skinning: bone palette (confirmed)
+
+Ped clothing has **8 influences per vertex**: slots 8 / 6 hold the first
+four joints and weights, slots 9 / 7 a second four; the 8 weights sum to
+exactly 255 on every vertex (checked on a protagonist top).
+
+Its joint indices do **not** index the drawable's own bones. They go
+through the model's **bone palette**: model +0x0C u16 count, +0x20 pointer
+to that many u32 joaat bone-name hashes, sorted ascending (80 on a
+protagonist top at LOD0, 28 at LOD1). Vertex joint index k is palette
+entry k. Checked by body side: 110 of 110 joints land on the right side
+with the palette, 50 % with the bone order.
+
+The palette names two kinds of bones:
+
+- the drawable's own `GM_U01_*` girth helper bones (69 on that top,
+  parentless, with parent-relative binds whose parent bone is not known);
+- bones of a **shared ped skeleton** that is not in the clothing file: 596
+  bones from `SKEL_ROOT`, with `BM_*`, `MH_*`, `RB_*` and `SEC_*` helpers,
+  in the `ambient_femalebody` / `ambient_malebody` fragments of
+  `packs.rpf`. `femalexxl` has the same bind pose.
+
+Some T-shirts name 8–9 palette bones that are in neither skeleton. Heads use
+another skin format (slots 8 / 9 with format 0x8c, 16 bytes per vertex):
+slot 9 reads as 4 × u32 joint indices (up to 50 on a protagonist head),
+slot 8 as 4 × (u16, u16) with plausible joints in the low halves, and
+slots 6 + 7 weights sum to 255 on every vertex (inferred; not decoded).
+
+### Ped heads: face textures (confirmed)
+
+Head drawables (`ped_standard_head`) **bind no textures**, and every head
+shares one UV layout: the face in the middle, the ears at the sides and a
+teeth and gums strip along the bottom. The face comes from a material
+preset ([§12](12-materials.md#material-presets-peds)):
+
+- a face preset (Category `378ad10c`) whose tag map lists the head
+  (key `4bfd27dd`, joaat of the full head drawable name) is that head's
+  face;
+- its "base" parameter holds the **albedo in slot `ead733fc`** (1024² BC1
+  sRGB) and a **BC5 normal map in slot `d689b17f`**.
+
+Example: `cs_jada_watts_head_fr1_afr_000_y_full` (`eb9b7bee`) → albedo
+`4aedb007f2b1ca3d`, normal `7742ffa7e241bd32`.
+
+| | Heads |
+|---|---|
+| all head drawables | 1,657 |
+| with a face through a preset (897 drawables tagged) | 893 |
+| crowd heads `hc_*`: tagged, but by presets with empty texture slots | — |
+| `a_head_base_*` and some `cs_*` heads (e.g. `cs_lucia`): not tagged in `packs.rpf` (perhaps in `story000.rpf`, not checked) | — |
+
+About 1,000 face albedos are ordinary textures in the `ttdb_peds_*_3`
+stores. `peds_loose.ttpf` holds clothing patterns, head-space masks (beard,
+brows, mouth) and red / green UV remap maps.
+
+**Body shape** moves helper bones of the shared skeleton through a rig
+([§17](17-other.md#ped-body-shape)). Other ped facts:
+
+- `ped_standard_muv` (clothing) and `ped_standard_head` dominate; the
+  `ped_standard*_blendshape*` shaders (about 300 uses) are only on rigid
+  accessories (piercings, helmets, dressings).
+- Hair, brows, lashes and beards are about 2 KB drawables with 3 vertices;
+  the real hair is built at runtime.
+
 ## 7.6 Shaders (materials)
 
 | Off | Meaning | Confidence |
 |-----|---------|-----------|
-| 0x00 | u32 material effect name hash | confirmed ([lowercase JOAAT](12-materials.md#material-name-hashes)) |
+| 0x00 | u32 material effect (shader) name hash; lowercase JOAAT (`standard` = `bcf03fc1`) | confirmed (all 344 shaders; [name hashes](12-materials.md#material-name-hashes)) |
 | 0x04 | `"atem"` | confirmed |
 | 0x08 | ptr → constant buffer (~0x160 bytes of floats) | inferred (layout unknown) |
 | 0x10 | ptr → per-parameter slot pointers | confirmed |
-| 0x20 | ptr → parameter table: u8 ?, u8 count, …, then count × (u32 param hash, u32 data offset) | confirmed |
+| 0x20 | ptr → parameter table: u8 ?, u8 count, …, then count × (u32 param hash, u32 data offset); param hash = joaat of the lower-case name (`diffusetex` = `c8e8c282`) | confirmed |
 | 0x38..0x3F | flags, see [§12](12-materials.md) | confirmed (bytes 1, 4) |
 
 A texture parameter's slot points to a 0x50-byte struct whose +0x30
@@ -191,19 +257,26 @@ pointer leads to a 32-byte texture reference: ptr, **u64 texture hash**
 - **Wheels** are not in the car fragment. They are shared models
   `rim_<class>_NNN` and `tyre_<class>_NNN` (with `_hi`/`_mid`) authored for
   the left-front wheel at unit scale (rim radius 0.5, tyre 0.88). The game
-  mirrors and scales them per vehicle; the scale and rim choice are not
-  decoded. The wheel bones' pivots give the mount points.
+  mirrors and scales them per vehicle. Each spawn configuration names its
+  rim and tyre, and the model info has `wheelScale` / `wheelScaleRear`
+  ([§11](11-vehicle-paint.md#vehicle-tables)); 1.625 × `wheelScale` fits by
+  eye, but the game's rule is not established. The wheel bones' pivots give the mount
+  points.
 - **Damage parts**: separate fragments `<car>_dmg_mod_<part>_NNN`.
   **Mod-kit parts**: `<car>_<part>_<kit>`. Both with `_hi`/`_mid`.
 
 ## Open questions
 
 - Normal top 12 bits; slots 12, 13, 17.
+- The parent bone of the `GM_U01_*` helpers; the head skin format (0x8c);
+  palette bones found in neither skeleton.
+- The face of heads no preset lists (`a_head_base_*`, some `cs_*`), and of
+  crowd heads whose presets have empty slots.
 - Occluder and water-vegetation LOD buffers (another format).
 - Shader constant-buffer layout (would give cable thickness, paint and
   material constants).
-- The 64-bit texture key function and a complete name table for material effects and parameters.
-- How damage parts are swapped in; wheel size and rim choice; handling.
+- The derivation of the 64-bit texture keys; 152 of 229 parameter names.
+- How damage parts are swapped in; how `wheelScale` sizes the shared wheels.
 
 
 ---

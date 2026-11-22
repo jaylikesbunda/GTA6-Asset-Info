@@ -51,7 +51,7 @@ GTA V, used only to say what a structure corresponds to.
 
 **Materials**
 
-- [11. Vehicle paint](11-vehicle-paint.md)
+- [11. Vehicle paint and vehicle tables](11-vehicle-paint.md)
 - [12. Material classes and texture slots](12-materials.md)
 
 **Other**

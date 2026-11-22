@@ -93,6 +93,8 @@ SDWA operand handling was the first blocker for 1,239 compute programs.
   A test of 6,896 stems against nine hash families, including JOAAT, produced
   zero suffix matches. The [32-bit drawable material name fields](../formats/12-materials.md#material-name-hashes)
   use lowercase JOAAT.
+- The meaning of the reported 64-bit hashes in the shader cache; these
+  are not the confirmed 32-bit drawable material name fields.
 - Whether meshlet vertex data uses a dictionary encoding (a small shared u16 vocabulary is
   observed across bodies, suggesting one).
-- BCPack decoding for compressed surfaces.
+- BCPack decoding for [formats beyond BC1](../formats/06-bcpack.md#60-status).

@@ -19,8 +19,10 @@ carries `note` fields explaining itself; unknown fields are kept by hash.
 | `meshes[]` | per geometry: `name` (`geomNN_<off>`), `geometry`, `vertex_count`, `triangle_count`, `exceeds_kn5_16bit_limit`, `material` (`shaderNN_<hash>`), `shader_index`, `uv_sets`, `uv_slots`, `normals`, `vertex_colors_raw`, `triangles_flipped_to_match_normals`, `triangles_dropped`, `position_axis_order`, `skinned`, `skin_influences`, `bones`, `bbox` (RAGE `[min, max]` from the vertices, added 2026-11-20) |
 | `wheel_mounts[]` | `{bone, pivot}`: wheel centres in model space (RAGE Z-up) |
 | `drawable` | parsed structure: `models[]`, `shaders[]`, `skeleton[]` (node, parent, `pivot`, `bind_matrix`), `bounds` |
-| `materials[]` | per shader: `shader`, `shader_name_hash`, `classification`, `base_color`, `normal`, `normal_green`, `textures[]`, optional `texture_fallback`, a `paint` block on car paint, and a `multilayer` block on two-layer blend shaders |
+| `materials[]` | per shader: `shader`, `shader_name_hash`, `shader_name` (the game's shader name, e.g. `standard_vehicle_2lyr`; added 2026-11-21), `classification`, `base_color`, `normal`, `normal_green`, `textures[]` (each slot with `param_name` where known, e.g. `diffusetex`), optional `texture_fallback`, a `paint` block on car paint, and a `multilayer` block on two-layer blend shaders |
 | `buffer_files`, `texture_files` | written files |
+| `head_skin` | ped heads (added 2026-11-21): the face used, `linked` (a preset names the head) or `auto`, its index and count, and the texture hashes |
+| `skin_used` and the skin's bones | ped clothing (added 2026-11-21): which skin was written (the bone palette joined to the shared ped skeleton when at least 90 % of the palette resolves), its bones, and any unresolved joints. The shared skeleton is read from `packs.rpf`, so index `packs` first. GLBs get `JOINTS_1` / `WEIGHTS_1` for the second four influences. Ped clothing exported before this date is wrongly skinned; re-export it |
 
 `classification` = `{class, render_bucket, alpha_mode, instanced_or_batch_lod, family, record_flags, decal}`;
 `class` is one of `opaque`, `alpha`, `cutout`, `decal`, `glass`, `window`,
@@ -67,7 +69,9 @@ a grey `baseColorFactor`, metallic 0.6, roughness 0.25 and no albedo.
 ## Placements: `<off>.json` and `index.jsonl`
 
 A map file JSON holds the file's own fields (extents, name and parent
-hash) and `entities[]`:
+hash), its `space` (`world`, `interior`, `world+interior` or `group`: interior
+and group files are in local space, not world space), `interiors` (per
+interior: bbox, rooms, entity sets with counts) and `entities[]`:
 
 | Field | Meaning |
 |---|---|
@@ -79,7 +83,8 @@ hash) and `entities[]`:
 | `gltf` | `{translation, rotation, scale}` ready for placing `model.glb` in a Y-up scene |
 | `scale_xy`, `scale_z` | scale |
 | `flags`, `guid`, `hash64` | raw |
-| `lod` | `{level: HD/LOD/SLOD1–4/ORPHAN_HD, parent_index, parent_link, num_children, lod_dist, child_lod_dist, priority}` |
+| `lod` | `{level: HD/LOD/SLOD1–4/ORPHAN_HD, parent_index, parent_link, num_children, lod_dist, child_lod_dist, priority}`. After `sixng lod-links` also `archetype_lod_dist`, `hd_texture_dist`, `effective_lod_dist` (own `lod_dist` if > 0, else the archetype's) and `parent` `{kind: entity \| batch, map, parent_index` or `batch` + `instance`, `archetype, name, model_id, distance, method, confidence, alternatives}`; `method` is `parent_hash`, `region`, `spatial`, `batch_position` or `batch_index_name`, `confidence` high / medium / low (added 2026-11-21) |
+| `interior` | on entities of interior files: `{interior, room, room_name, entity_set, entity_set_name}` (added 2026-11-21) |
 | `render`, `render_reason` | present only when the placement should not be drawn by default: `render: false` and a reason — `placeholder` (no model resolved), `vfx_proxy` (effect markers, e.g. `*vfx*proxy*`, `vfx_dummy*`), `interior_proxy` (interior-shell stand-ins `*_pxy`, `*shell_proxy`, `int_*_proxy`, which duplicate the interior shells), `shadow_proxy` (`*_shadow` shadow casters) or `light_proxy` (`*_lit_proxy`, zero-size geometry). Rules come from exporting examples; `gmt_*_proxy_*` shop items and `*_occl_*` cables are real geometry and are not flagged. Confidence: medium (name rules, checked on the examples). Added 2026-11-20 |
 | `fields` | every other scalar field, by hash |
 

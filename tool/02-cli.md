@@ -1,6 +1,6 @@
 # CLI
 
-*Part of the [SixNG tool guide](README.md). Numbers and timings as of 2026-11-20.*
+*Part of the [SixNG tool guide](README.md). Numbers and timings as of 2026-11-21.*
 
 ## CLI basics
 
@@ -43,6 +43,8 @@ Used by `extract` and `extract-category`.
 | `--force` | redo items that already have outputs |
 | `--no-embedded-textures` | skip textures embedded in models |
 | `--dry-run` | print the selection count and decompressed size; write nothing |
+| `--body-shape "<control>=<v>,…"` | ped clothing: pose the shared ped skeleton with the game's body-shape rig, e.g. `gcweightbelly=0.5,gcmusclechest=1`. Controls: `gcweight<region>` −1..1, `gcmuscle<region>` 0..1 (back, belly, butt, calf, chest, forearm, hip, muffin, neck, shoulder, thigh, upperarm), `gcbutt` 0..1, `gcbreasts` −1..1; `allweight=v` / `allmuscle=v` set a whole group. The shape goes into the joint node transforms (inverse bind matrices stay neutral). Needs `packs` and `anim` indexed; re-index `anim` with SixNG 2026-11-21 or later (its index format changed) |
+| `--head-skin N` | ped heads: which face to use (they bind no textures). Heads a material preset names use that face; others get a face of the same sex, body type and ethnicity code (`fr1_lat` in `head_fr1_lat_018_m_full`) from the linked heads, preferring the same age letter |
 
 **Resumable runs.** Each item writes a marker when it finishes, and items
 with outputs are skipped. To continue a stopped run, run the same command
@@ -149,6 +151,19 @@ archive when present. `world all` runs them in the right order.
 # which placements, lights and extract then use automatically.
 sixng link-archetypes levels
 
+# Archetype LOD distances and resolved LOD parents (~2.5 min). Writes
+# <work>/index/archetype_lod.jsonl and lod_parents.jsonl; re-run placements to pick them up.
+sixng lod-links levels
+
+# Interior membership: per map file its space (world / interior-local / group-local),
+# per entity its interior, room and entity set (~1.5 min). Writes <work>/index/interior_entities.jsonl.
+sixng interior-entities levels
+
+# Name dictionary for shader, parameter and meta field hashes, built from the install
+# (~2 s, needs the common index). Writes <work>/names/names.json; exports and the app use it.
+sixng names
+sixng names --lookup bcf03fc1,c8e8c282
+
 # BCPack texture gaps: every material with flat or low-mip textures (~6 min).
 # Uses placements, batches, collision and surfaces from the same output dir.
 sixng texture-gaps levels -o out --file out/texture_gaps.json --placements out/placements/levels
@@ -157,8 +172,20 @@ sixng texture-gaps levels -o out --file out/texture_gaps.json --placements out/p
 sixng meta data -o out
 sixng meta levels -o out --dump --limit 100
 
-# Shader census: per shader hash, use count, parameters, texture formats, record flags
+# Shader census: per shader hash and name, use count, parameters, texture formats, record flags
 sixng shaders levels -o shaders.json
+```
+
+### Metadata and vehicles
+
+```powershell
+# PSO files to JSON: <out>/pso/data/<offset>.json (a few seconds)
+sixng pso data --out out
+# Vehicle handling records: <out>/pso/handling.json
+sixng handling data --out out
+# Vehicle model info (wheel scale and type), spawn configurations (colour, rim, tyre, parts)
+# and weighted paint-colour lists: <out>/vehicles/vehicles.json
+sixng vehicles packs --out out
 ```
 
 ### Texture stores
@@ -172,6 +199,22 @@ sixng ttpf maps --first 20 --mip 1 --out tex
 # Texture arrays and cube maps: every slice / face as <hash>_m<mip>_s<slice>.png
 # (without --all-slices only slice 0 is written)
 sixng ttpf lighting --hash 0123456789abcdef --all-slices --out tex
+# A whole store in parallel, with index.json marking each texture complete, partial
+# (part of the data in BCPack chunks other than BC1) or bcpack_only (no PNG). Use the full store id
+# when a short name matches several stores. The UI store takes about 10 s.
+sixng ttpf data/ttdb/ui/ttdb_ui.ttpf --all --out out/ui/ttdb_ui
+```
+
+### Video and UI graphics
+
+```powershell
+# Bink videos: carve by header (~7 s) and list them in <out>/movies/movies.json
+sixng movies movies --out out
+# Write the .bk2 files as they are (all of them: 8.8 GB), or only some
+sixng movies movies --out out --extract
+sixng movies movies --out out --extract --only 143205000
+# Named UI dictionaries in data.rpf (loading screens, HUD, gauges; 880 textures, 108 MB)
+sixng extract data --rtype txd -o out
 ```
 
 ### Research helpers

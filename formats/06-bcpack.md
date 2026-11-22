@@ -1,13 +1,33 @@
 # 6. BCPack
 
-*Part of the [SixNG format specification](README.md). Numbers as of 2026-11-20; confidence: confirmed / inferred / unknown.*
+*Part of the [SixNG format specification](README.md). Numbers as of 2026-11-21; confidence: confirmed / inferred / unknown.*
 
 BCPack is the texture codec of the Xbox Series hardware decompression
-unit. There is no public specification or decoder, and no
-plain copy of any affected texture exists elsewhere in the game. What
-follows was mapped from the streams alone, on BC1. **0 % of BCPack data is
-decoded as of 2026-11-20.** BC4, BC5 and BC7 streams have not been studied
-beyond their headers.
+unit. There is no public specification, and no plain copy of any affected
+texture exists elsewhere in the game.
+
+## 6.0 Status
+
+**BC1 decodes** (as of 2026-11-21). A codec `0x04` chunk decodes to plain
+BC1 blocks:
+
+- block count = the chunk's virtual size / 8;
+- the input is the stored bytes without the trailing zero pad (`b >> 20`
+  in the chunk entry, [§5](05-ttpf.md#chunk-entry-u32-a-u32-b));
+- the blocks come out in the texture's usual tiled order, so they are
+  detiled and decoded exactly as for zlib chunks.
+
+Confirmed: all 2,776 BCPack BC1 textures of one terrain store decode with
+no errors. With BC1 decoded, mip 0 is readable for 98.4 % of store
+textures (86.8 % before; [coverage](05-ttpf.md#coverage-all-57-stores-352461-textures)).
+
+**Not decoded:** the BC3, BC4, BC5, BC6H and BC7 codecs (`0x0C`, `0x10`,
+`0x14`, `0x18`, `0x1C`). About 0.8 % of textures have mip 0 in those.
+
+The rest of this page is the earlier mapping of the BC1 stream, made from
+the streams alone before BC1 decoded. It is partial and may not match a
+working decoder in every detail (lane count, models); it is kept for the
+other formats, which share the coder.
 
 ## 6.1 What is solved
 
@@ -148,35 +168,40 @@ an unknown model, so the index lanes cannot be tested alone.
 2. Record layout (byte length) of varying and extension lanes.
 3. What lane 0 codes.
 4. Exact timing of decode versus read within a round.
-5. Block order (linear or swizzled).
-6. Full decoding of BC1 and BC4, and the lane roles of the 16-byte formats.
+5. Block order for formats beyond BC1.
+6. Full decoding of BC4 and the lane roles of the 16-byte formats.
 
 ## 6.4 How to resume
 
-1. **Start with the 2,566 all-constant chunks.** Zero passed the whole-chunk
-   harness. Its first failure is lane 0's expected symbol count. One
-   1,536-block chunk has a lane-0 state for 257 symbols under the tested
-   constant model. Identify what lane 0 codes and which quantity determines
-   its count. Establish the meaning of the 16-bit fields before using them
-   to schedule reads.
-2. **Resolve the interleaved streams and reconstruct BC blocks.** Pin down
-   the index, varying plane and extension models, their read order and the
-   endpoint/index assembly. Require each stream to consume its own input
-   exactly, reach the expected final state and produce its independently
-   predicted symbol count. Validate the reconstructed BC bytes and block
-   order on held-out chunks, including mip tails and multiple substreams.
-3. **Get exact reference output if available.** Known decompressed BC blocks
-   from authorized reference tooling would make the read order and block
-   assembly directly testable. Re-encoding a visually equivalent image
-   provides weak evidence. A public encoder reproduced about 42% of blocks
-   in one stored BC1 comparison and could not supply exact reference output
-   for the BCPack corpus.
-4. **Extend to 16-byte blocks and texture processing.** Validate each
-   format's lane roles. Once the decoder emits the expected BC bytes, map
-   them to the texture's stored mip, slice and tile order before applying
-   the regular BC texture decoder.
+Use the decoded BC1 blocks as a baseline. A candidate lane model must
+consume exactly its byte budget and end at x = L, with a symbol count
+fixed independently of the fit. For the proposed BC1 index model, that
+means 4N index symbols in total for N blocks. A fit with a free count
+is not validation.
 
-Until then, use the lower-mip recovery ([§5](05-ttpf.md)) and the flat fallbacks.
+1. **Start with reference blocks.** For formats beyond BC1, an exact
+   decoded BC payload, or the same texture stored both as BCPack and plain
+   blocks, would make read order and assembly testable. Re-encoding a
+   visually similar image is not equivalent: one public encoder reproduced
+   only about 42 % of blocks in a stored BC1 comparison. One-block-difference
+   pairs are another option, but tail-sharing pairs were rare (15 groups
+   out of 3,259 BC1 textures checked).
+2. **Use the earlier failures to constrain the lane model.** In the
+   independent harness, none of 2,566 all-constant BC1 chunks passed; the
+   first failure was lane 0's expected symbol count. One 1,536-block
+   chunk's state fits 257 symbols under the tested constant model. Do not
+   treat the observed 16-bit words as byte budgets without validation;
+   solve the varying and extension records and interleaved read order.
+3. **Check reconstruction on held-out chunks.** Test each format's lane
+   roles, endpoint/index assembly and exact output bytes, including mip
+   tails, slices, tiling and multiple substreams.
+
+The earlier BC1 joint-search estimate was about 3 × 10^8 full decodes
+per chunk (~6 × 10^12 symbol steps, or roughly two weeks on one desktop).
+It assumed no early pruning because each round mixes all lanes.
+
+For BC3–BC7, use the lower-mip recovery ([§5](05-ttpf.md)) and the flat
+fallbacks until then.
 
 
 ---

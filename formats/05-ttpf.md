@@ -1,6 +1,6 @@
 # 5. `ttpf` texture stores
 
-*Part of the [SixNG format specification](README.md). Numbers as of 2026-11-20; confidence: confirmed / inferred / unknown.*
+*Part of the [SixNG format specification](README.md). Numbers as of 2026-11-21; confidence: confirmed / inferred / unknown.*
 
 `data/ttdb/**/*.ttpf`: 57 stores (maps, terrain, props, peds, vehicles, UI,
 weapons…), magic `RDS5`. Each store is a virtual byte space (can exceed
@@ -40,7 +40,7 @@ looks like a scrambled swizzle.
 | Codec id | Chunks | Content | Codec |
 |---|---|---|---|
 | 0x20 | 908,643 | any | zlib |
-| 0x04 | 100,026 | BC1 | BCPack |
+| 0x04 | 100,026 | BC1 | BCPack (decodes, [§6](06-bcpack.md#60-status)) |
 | 0x0C | 35 | BC3 | BCPack |
 | 0x10 | 77 | BC4 | BCPack |
 | 0x14 | 325 | BC5 | BCPack |
@@ -66,7 +66,7 @@ unknown).
 
 | Descriptor field | Meaning | Confidence |
 |---|---|---|
-| u32 d0 bits 0–13 / 14–27 / 28–31 | width − 1 / height − 1 / mip count − 1 (on cube maps, tile modes 9–12, the field is the mip count itself: cubes marked "2" store one mip per face) | confirmed |
+| u32 d0 bits 0–13 / 14–27 / 28–31 | width − 1 / height − 1 / mip count − 1 (on cube maps, tile modes 9–12, the field is the mip count itself: cubes marked "2" store one mip per face). The mip field **undercounts on about 44.9 K textures** ([below](#real-mip-count)) | confirmed (width, height); mip field unreliable |
 | u32 d1 bits 0–2 | flags | unknown |
 | u32 d1 bits 3–9 | DXGI format | confirmed |
 | u32 d1 bits 10–19 | array size − 1 (0 on 356,418 of 357,115 textures). "Bit 10" alone is the low bit of this field: it is set on every array with an even size (598 textures). Sizes: 6 = cube maps (567); 2 (19), 3 (99), 8 (3), 16 (1), 32 (4), 48 (2), 64 (2) = texture arrays. Layouts in [Arrays and cube maps](#arrays-and-cube-maps) | confirmed (the sizes match the store spacing; every slice decodes to a separate, coherent image) |
@@ -79,12 +79,34 @@ Textures are packed tightly and small ones can sit inside a larger one's
 padding, so **the size comes from the mip chain**, not the distance to the
 next texture.
 
+### Real mip count
+
+The mip field (d0 bits 28–31) is wrong on about 44.9 K of the 352 K store
+textures (confirmed):
+
+| Case | Textures | Field says | Stored |
+|---|---|---|---|
+| tile mode 1 or 2, field 0 (mostly 1024 × 1024 terrain normal maps) | 41.5 K | 1 mip | 3 mips |
+| tile mode 1 UI sprites, field 1 | about 2.7 K | 2 mips | 1 mip |
+| others | a few hundred | | off by 1–2 |
+
+Mips are stored smallest first with mip 0 last, so a wrong count puts mip 0
+at the wrong offset: a scrambled band of the smaller mips across the top of
+1024 × 1024 terrain textures, or noise on small UI sprites.
+
+Rule (single-slice 2D textures): each texture's mip chain runs right up to
+the next texture's virtual offset. Where the size given by the field does
+not reach it and exactly one mip count does, use that count. Checked as
+mip 1 = mip 0 downsampled: median 28–46 dB with the corrected count against
+7–15 dB with the field's, and by eye on terrain and UI textures. Where the
+true count is stored is unknown; it does not map to a single bit field.
+
 ## Layout: AMD Gfx10 (RDNA2) swizzle modes (confirmed)
 
 | Tile mode | Gfx10 mode | Block | Element bit order in a block (low → high) |
 |---|---|---|---|
-| 0 | `SW_64KB_D` | 64 KiB | 16-byte: `x0 y0 x1 y1 y2 x2 y3 x3 y4 x4 y5 x5` · 8-byte: `x0 y0 x1 x2 y1 y2 x3 y3 x4 y4 x5 y5 x6` |
-| 1, 2, 3 | `SW_4KB_S` | 4 KiB | 16-byte: `y0 y1 x0 x1 y2 x2 y3 x3` · 8-byte: `x0 y0 y1 x1 x2 y2 x3 y3 x4` |
+| 0 | `SW_64KB_D` | 64 KiB | 16-byte: `x0 y0 x1 y1 y2 x2 y3 x3 y4 x4 y5 x5` · 8-byte: `x0 y0 x1 x2 y1 y2 x3 y3 x4 y4 x5 y5 x6` · 1-byte: `x0 x1 x2 y1 y0 y2 x3 y3 y4 x4 y5 x5 y6 x6 y7 x7` (y1 before y0) |
+| 1, 2, 3 | `SW_4KB_S` | 4 KiB | 16-byte: `y0 y1 x0 x1 y2 x2 y3 x3` · 8-byte: `x0 y0 y1 x1 x2 y2 x3 y3 x4` · 1-byte: `x0 x1 x2 x3 y0 y1 y2 y3 y4 x4 y5 x5` |
 | 9, 10, 11, 12 | `SW_4KB_S`, cube maps only: tile mode − 8 = number of stored copies (below) | 4 KiB | as modes 1–3 |
 
 - Blocks are row-major; no pipe/bank XOR.
@@ -99,20 +121,25 @@ next texture.
   offset 0; the other mips follow, each padded to whole blocks.
 - Tail mip k (0 = largest in the tail): `m = max_mips_in_tail − 1 − k`,
   `off = m > 6 ? 16 << m : m << 8`. Origin x = bits 9, 11, 13… of `off`
-  × 8 (8-byte elements) or × 4 (16-byte); y = bits 8, 10, 12… × 4. Apply
-  the block equation to (origin + x, y).
+  × 8 (8-byte elements), × 4 (16-byte) or × 16 (1-byte); y = bits 8, 10,
+  12… × 4, or × 16 for 1-byte elements. The unit is one 256-byte block:
+  8 × 4, 4 × 4 or 16 × 16 elements. Apply the block equation to
+  (origin + x, y).
+- **1-byte formats** (A8 = DXGI 65, R8) decode with these orders in every
+  tile mode (confirmed, 2026-11-21): 126 textures (119 A8 decal and mask
+  textures, 7 R8); mip 1 matches mip 0 downsampled at a median of 63 dB.
 
 Checked per store and format: mip n + 1 equals mip n downsampled (mean
 error 0–4 levels) on BC1, BC3, BC4, BC5 and BC7 in every mode.
 
-An independent 352,461-record census of the 46 base TTDB stores found
-298,354 supported full chains and 9,685 partial chains with a zlib base
-mip. Of the remaining records, 40,105 had an opaque base payload, 2,857
-had an unresolved uncompressed layout, 948 used unsupported codecs in
-that decoder, 374 had unconfirmed layout nibbles, and 138 had no matching
-surface span. These counts describe that decoder's coverage. RGBA8 and
-BGRA8 test images remain provisional where no reference or discriminating
-mip check establishes the layout.
+Before BC1 BCPack decoded, an independent census of the 46 base TTDB
+stores (352,461 records) found 298,354 supported full chains and 9,685
+partial chains with a zlib base mip. Of the remaining records, 40,105 had
+an opaque base payload, 2,857 had an unresolved uncompressed layout, 948
+used unsupported codecs in that decoder, 374 had unconfirmed layout
+nibbles, and 138 had no matching surface span. These counts describe that
+decoder's coverage. RGBA8 and BGRA8 test images remain provisional where
+no reference or discriminating mip check establishes the layout.
 
 Some 4 KiB RGBA8 entries have the shape of packed colour tables. For
 example, `ttdb_graphics.ttpf` #342 (128 × 128) has 8,333 consecutive
@@ -173,13 +200,20 @@ cubes (shop walls, ceiling and floor).
 
 ## Coverage (all 57 stores, 352,461 textures)
 
+**Since BC1 BCPack decodes** (2026-11-21; chunk-table check over the 46
+stores in the main install): mip 0 is readable for **98.4 %** of textures
+(86.8 % before). Maps 99.2 %, props 99.5 %, peds 99.2 %, interiors 99.7 %,
+vehicles 98.9 %, terrain 97.4 % (67.6 % before), UI 91.1 %. Flat fallbacks
+fall from 29,310 to 1,309 textures and low-mip exports from 14,443 to
+1,410. The table below is from before BC1 decoded:
+
 | | Textures |
 |---|---|
 | whole mip chain in zlib chunks | 298,332 (84.6 %): vehicles 96.7 %, maps 91.8 %, props/peds/interiors ~90 %, terrain 66 %, UI 57 % |
 | chain touches BCPack, mip 0 still in zlib | 6,966 (2.0 %) |
 | mip 0 in BCPack, a lower mip in zlib (exported at that mip) | 14,441 (4.1 %) |
 | every mip in BCPack | 29,310 (8.3 %) |
-| unsupported 4-/2-byte formats or special tile modes 9–12 | 3,412 (1.0 %) |
+| unsupported 4-/2-/1-byte formats or special tile modes 9–12 (1-byte formats decode since) | 3,412 (1.0 %) |
 
 The coverage table predates the array and cube-map layouts. With them, 563 of
 the 567 cube maps and 118 of the 130 arrays decode (the rest have 4-/2-byte
@@ -187,20 +221,23 @@ formats, except three cubes with more copies than their mip chain has units).
 
 **Lower-mip recovery:** chunks are 4 KiB–4 MiB ranges, not whole textures,
 and mips go smallest first, so the small mips of a BCPack texture often sit
-in zlib chunks. SixNG exports the largest mip that lies entirely outside
-BCPack chunks (tail mips count as the whole tail block).
+in zlib chunks. For unsupported BCPack codecs, SixNG exports the largest
+mip that does not use an unsupported chunk (tail mips count as the whole
+tail block).
 
-**Who is hit:** BCPack hits linear `BC1_UNORM` almost only (normal, packed
-and mask data), not colour. Over all materials in `levels.rpf`, 37.9 % have
+**Who is hit** (before BC1 decoded; the BC1 cases below now decode):
+BCPack hits linear `BC1_UNORM` almost only (normal, packed and mask data),
+not colour. Over all materials in `levels.rpf`, 37.9 % have
 a flat slot and 22.6 % a low-mip slot, but weighted by placements that is
 5.0 % and 3.5 %; only 7,088 materials have a flat colour slot. Terrain is
 worst: its layer normals and its RGB layer-blend mask are often flat.
 
 ## Open questions
 
-- 4-byte (RGBA8/BGRA8) and 2-byte (R16) layouts: no equation found, and
-  even row-major reads are scrambled, so the data location may also be
-  wrong (another header?).
+- Where the descriptor stores the real mip count ([Real mip count](#real-mip-count)).
+- General 4-byte (RGBA8/BGRA8) and 2-byte (R16) layouts remain unresolved.
+  The RGBA8 examples above support a tiled order on those samples, not a
+  general layout.
 - Format 157 (one vehicle texture slot) is unknown.
 - Three cube maps declare more copies (tile mode − 8) than their mip chain
   has units (256×256 with "3" or "4" mips, 128×128 with "3"); how they are

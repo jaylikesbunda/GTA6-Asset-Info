@@ -1,6 +1,6 @@
 # 9. Placements, LOD links, archetypes and batches
 
-*Part of the [SixNG format specification](README.md). Numbers as of 2026-11-20; confidence: confirmed / inferred / unknown.*
+*Part of the [SixNG format specification](README.md). Numbers as of 2026-11-21; confidence: confirmed / inferred / unknown.*
 
 ## 9.1 Map file and entity
 
@@ -27,9 +27,10 @@ hash +0x68, flags +0x80, four vec3 extents +0x90…+0xC0, `entities` array
 | Field hash | Meaning | Values |
 |---|---|---|
 | `6c8f1715` | lodLevel | 0 HD, 1 LOD, 2/3/4 SLOD1–3, 5 ORPHAN_HD, 6 SLOD4 |
-| `d89231bd` | parentIndex | valid only when `e74c3c23` = −1 |
+| `d89231bd` | parentIndex | LOD slot in the parent map file ([parents](#resolving-lod-parents)) |
+| `e74c3c23` | parentInstance | −1, or an instance of a prop batch |
 | `a687ac89` | numChildren | 0 on HD/orphans; 1–16 on LODs |
-| `bf74dfa7` | lodDist | −1 = default |
+| `bf74dfa7` | lodDist | −1 = use the archetype's `lodDist` |
 | `ca974bcd` | childLodDist | 0 on HD |
 | `84799847` | priorityLevel | 0–3; −1 on orphans |
 | `0dc5f270`, `540ca436` | AO multipliers | usually 255 (inferred) |
@@ -40,6 +41,53 @@ exactly one level up (HD → LOD, LOD → SLOD1), none is out of range, the
 median child–parent distance is 0.47 m, 80 % of named pairs share a name
 prefix (`x` → `x_lod` → `x_slod`). Of 2,089 files with a parent hash, 1,304
 resolve.
+
+### Archetype LOD distances (confirmed)
+
+The archetype definition (`82d6fc83`, [§9.4](#94-archetype-definitions-and-unnamed-drawables))
+carries the same names: `lodDist` +0x38, `bsCentre` +0x58, `bsRadius`
++0x64, `hdTextureDist` +0x70. 1,060,711 of the 1,158,518 HD entities have
+`lodDist` −1. Where an entity sets it, it equals the archetype value for
+52 % of HD and almost all LOD/SLOD entities, and overrides it for the rest.
+1,492 of 278,174 archetype hashes have definitions with different `lodDist`
+values.
+
+### Resolving LOD parents
+
+A map file's **LOD slots** are its entities followed by its prop batches
+(`ba049770`). There are two parent forms.
+
+**parentInstance = −1**: parentIndex is an entity of the parent map file.
+Only 2,089 files name that file with a parent hash (the parent's name hash;
+the 64-bit `e5cdb664` equals the parent's `8bfb6095`). For the others, the
+parent file can be chosen per child file, since all children of a file
+share it (inferred rule):
+
+1. Candidates are files in the same region (map-data field `6c0f9c8c`,
+   shared by a child file and its LOD files) whose entity at each child's
+   index is one level up and has children. SLOD1 → SLOD2 links leave the
+   region, so there any file near the children is a candidate.
+2. Rank by the number of children inside the parent's bounding sphere,
+   then by children per parent not above `numChildren`, then the nearest
+   following file in the archive.
+
+On the files that do have a parent hash, this picks the same file in 95 %
+of cases; the misses are state variants of one LOD at the same place
+(identical candidates).
+
+**parentInstance ≥ 0** (about 1.05 M HD entities): the parent is instance
+`parentInstance` of prop batch `parentIndex − <entity count>` in another
+map file, a `<name>_batchlod` model (confirmed). No decoded field names
+that file, but the instance sits exactly on the entity (median 0.0 m), so it
+is found by position. About 3 % of prop batches do not decode (garbage
+instance positions); for those, match by slot and by the name `<entity
+name>_batchlod`, preferring the same region. Where both methods work they
+pick the same batch in 99.9 % (one same-region candidate) and 99.0 %
+(several) of cases.
+
+Results on `levels.rpf`: batch parents 1,042,067 of 1,052,215 (99.0 %);
+entity parents 214,517 of 214,705 (177,809 high, 30,444 medium and 6,264
+low confidence).
 
 ## 9.3 Batches (instanced grass and props, confirmed)
 
@@ -112,7 +160,6 @@ as a heuristic and use name-hash equality where both sides provide it.
 ## Open questions
 
 - The 64-bit per-archetype hash at entity +0x08.
-- The grouping link when `e74c3c23` ≥ 0 (prefab-style index).
 - Where prefab groups (`35abc248`) are placed.
 - 785 map files whose parent hash does not resolve.
 
